@@ -1,6 +1,8 @@
 from ttoken import TOKEN
 import sys
 
+OPREL = [">", "<", ">=", "<=", "==", "!="]
+
 EXCLUDED_CHARS = [
     "(",
     ")",
@@ -17,9 +19,11 @@ EXCLUDED_CHARS = [
     "=",
     "{",
     "}",
+    "&",
+    "|",
 ]
 BROKEN_CHARS = ["\n", " "]
-PATH_FILE = "exemplo.c"
+PATH_FILE = "teste.c"
 
 
 class Lexical:
@@ -90,6 +94,9 @@ class Lexical:
     def get_token(self):
 
         estado = 1
+        is_float = False
+        is_char = False
+        is_spec_char = 0
         lexema = ""
         char = self.get_char()
 
@@ -116,6 +123,8 @@ class Lexical:
                 # inicio de string
                 elif char == '"':
                     estado = 4
+                elif char == "'":
+                    estado = 12
                 elif char == "(":
                     return (TOKEN.abrePar, "(", lin, col)
                 elif char == ")":
@@ -148,6 +157,12 @@ class Lexical:
                     estado = 7
                 elif char == "!":
                     estado = 8
+                elif char == "&":
+                    lexema += char
+                    estado = 10
+                elif char == "|":
+                    lexema += char
+                    estado = 11
                 elif char == "\0":
                     return (TOKEN.eof, "<eof>", lin, col)
                 else:
@@ -165,38 +180,44 @@ class Lexical:
             elif estado == 3:
                 if char.isnumeric():
                     estado = 3
-                elif char in EXCLUDED_CHARS or char in BROKEN_CHARS:
+                elif char == ".":
+                    is_float = True
+                    lexema += char
+                elif char in BROKEN_CHARS:
                     self.unget_char(char)
-                    return (TOKEN.num, lexema, lin, col)
+                    if is_float:
+                        return (TOKEN.valorFloat, lexema, lin, col)
+                    else:
+                        return (TOKEN.valorInt, lexema, lin, col)
                 else:
                     return (TOKEN.erro, lexema, lin, col)
 
             # TODO: Atulizar caso seja necessário utilizar o caractere de escape '\'
             elif estado == 4:
                 if char == '"':
-                    return (TOKEN.string, lexema, lin, col)
+                    return (TOKEN.valorString, lexema, lin, col)
 
             elif estado == 5:
                 if char == "=":
-                    return (TOKEN.menorIgual, "<=", lin, col)
+                    return (TOKEN.opRel, "<=", lin, col)
                 else:
-                    return (TOKEN.menor, "<", lin, col)
+                    return (TOKEN.opRel, "<", lin, col)
 
             elif estado == 6:
                 if char == "=":
-                    return (TOKEN.maiorIgual, ">=", lin, col)
+                    return (TOKEN.opRel, ">=", lin, col)
                 else:
-                    return (TOKEN.maior, ">", lin, col)
+                    return (TOKEN.opRel, ">", lin, col)
 
             elif estado == 7:
                 if char == "=":
-                    return (TOKEN.igual, "==", lin, col)
+                    return (TOKEN.opRel, "==", lin, col)
                 else:
                     return (TOKEN.atrib, "=", lin, col)
 
             elif estado == 8:
                 if char == "=":
-                    return (TOKEN.diferente, "!=", lin, col)
+                    return (TOKEN.opRel, "!=", lin, col)
                 else:
                     return (TOKEN.NOT, "!", lin, col)
 
@@ -210,6 +231,32 @@ class Lexical:
                     estado = 1
                 else:
                     return TOKEN.divide, "/", lin, col
+
+            elif estado == 10:
+                lexema += char
+                if char == "&":
+                    return (TOKEN.AND, "&&", lin, col)
+                else:
+                    return (TOKEN.erro, lexema, lin, col)
+
+            elif estado == 11:
+                lexema += char
+                if char == "|":
+                    return (TOKEN.OR, "||", lin, col)
+                else:
+                    return (TOKEN.erro, lexema, lin, col)
+            elif estado == 12:
+                if not is_char:
+                    is_char = True
+                else:
+                    if char == "'":
+                        return (TOKEN.valorChar, lexema, lin, col)
+                    elif char == "\\":
+                        is_spec_char += 1
+                    elif is_spec_char == 1:
+                        is_spec_char += 1
+                    else:
+                        return (TOKEN.erro, lexema, lin, col)
 
             char = self.get_char()
 
