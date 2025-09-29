@@ -19,10 +19,12 @@ EXCLUDED_CHARS = [
     "=",
     "{",
     "}",
+    "[",
+    "]",
     "&",
     "|",
 ]
-BROKEN_CHARS = ["\n", " "]
+BROKEN_CHARS = ["\n", " ", ";", "{", "}", "(", ")", "[", "]"]
 PATH_FILE = "teste.c"
 
 
@@ -129,6 +131,10 @@ class Lexical:
                     return (TOKEN.abrePar, "(", lin, col)
                 elif char == ")":
                     return (TOKEN.fechaPar, ")", lin, col)
+                elif char == "[":
+                    return (TOKEN.abreCol, "[", lin, col)
+                elif char == "]":
+                    return (TOKEN.fechaCol, "]", lin, col)
                 elif char == "{":
                     return (TOKEN.abreChave, "{", lin, col)
                 elif char == "}":

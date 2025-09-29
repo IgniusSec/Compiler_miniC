@@ -37,6 +37,8 @@ class TOKEN(IntEnum):
     valorInt = 33
     valorChar = 34
     valorFloat = 35
+    abreCol = 36
+    fechaCol = 37
 
     @classmethod
     def msg(cls, token):
@@ -76,6 +78,8 @@ class TOKEN(IntEnum):
             33: "valorInt",
             34: "valorChar",
             35: "valorFloat",
+            34: "[",
+            35: "]",
         }
         return nomes[token]
 
