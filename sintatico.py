@@ -1,11 +1,10 @@
-import re
 from lexical import Lexical, PATH_FILE
 from ttoken import TOKEN
 import sys
 
 import ttoken
 
-PERM_TYPES = [TOKEN.INT, TOKEN.FLOAT, TOKEN.CHAR]
+PERM_TYPES = [TOKEN.INT, TOKEN.FLOAT, TOKEN.CHAR, TOKEN.VOID]
 
 
 class Sintatico:
@@ -165,7 +164,7 @@ class Sintatico:
             TOKEN.ident,
         ]
         (token, lexema, linha, coluna) = self.lexico.token_atual
-        if token in pred:
+        if token in pred or token in PERM_TYPES:
             self.stmt()
             self.stmt_list()
         else:
@@ -209,7 +208,7 @@ class Sintatico:
             self.consume(TOKEN.RETURN)
             self.expr()
             self.consume(TOKEN.ptoVirg)
-        elif token == pred:
+        elif token in pred:
             self.expr()
             self.consume(TOKEN.ptoVirg)
         elif token in PERM_TYPES:
@@ -248,6 +247,7 @@ class Sintatico:
             TOKEN.valorFloat,
             TOKEN.valorChar,
             TOKEN.valorString,
+            TOKEN.ident,
         ]
 
         (token, lexema, linha, coluna) = self.lexico.token_atual
@@ -283,7 +283,7 @@ class Sintatico:
         ElsePart -> else Stmt | LAMBDA
     """
 
-    def else_stmt(self):
+    def else_part(self):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.ELSE:
             self.consume(TOKEN.ELSE)
@@ -298,7 +298,6 @@ class Sintatico:
     def declaration(self):
         self.type()
         self.ident_list()
-        self.consume(TOKEN.ptoVirg)
 
     """
         Type -> int | float | char
@@ -312,6 +311,8 @@ class Sintatico:
             self.consume(TOKEN.FLOAT)
         elif token == TOKEN.CHAR:
             self.consume(TOKEN.CHAR)
+        elif token == TOKEN.VOID:
+            self.consume(TOKEN.VOID)
         else:
             self.error_message(token, linha, coluna)
 
@@ -343,7 +344,7 @@ class Sintatico:
     def ident_declar(self):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.ident:
-            self.consume(TOKEN.ident)
+            # self.consume(TOKEN.ident)
             self.opc_ident_declar()
         else:
             self.error_message(token, linha, coluna)
@@ -376,6 +377,7 @@ class Sintatico:
     def resto_expr(self):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.atrib:
+            self.consume(TOKEN.atrib)
             self.expr()
             self.resto_expr()
         else:
@@ -575,7 +577,7 @@ class Sintatico:
         ]
 
         (token, lexema, linha, coluna) = self.lexico.token_atual
-        if token == pred:
+        if token in pred:
             self.expr()
             self.resto_params()
         else:
