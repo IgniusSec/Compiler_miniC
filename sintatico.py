@@ -298,6 +298,7 @@ class Sintatico:
     def declaration(self):
         self.type()
         self.ident_list()
+        self.consume(TOKEN.ptoVirg)
 
     """
         Type -> int | float | char
@@ -344,7 +345,7 @@ class Sintatico:
     def ident_declar(self):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.ident:
-            # self.consume(TOKEN.ident)
+            self.consume(TOKEN.ident)
             self.opc_ident_declar()
         else:
             self.error_message(token, linha, coluna)
@@ -359,6 +360,9 @@ class Sintatico:
             self.consume(TOKEN.abreCol)
             self.consume(TOKEN.valorInt)
             self.consume(TOKEN.fechaCol)
+        elif token == TOKEN.atrib:
+            self.consume(TOKEN.atrib)
+            self.expr()
         else:
             return
 
