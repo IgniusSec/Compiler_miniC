@@ -23,7 +23,7 @@ class TOKEN(IntEnum):
     multiplica = 19
     divide = 20
     resto = 21
-    porcent = 22
+    FOR = 22
     VAR = 23
     abreChave = 24
     fechaChave = 25
@@ -64,7 +64,7 @@ class TOKEN(IntEnum):
             19: "*",
             20: "/",
             21: "%",
-            22: "%",
+            22: "for",
             23: "var",
             24: "{",
             25: "}",
@@ -78,8 +78,8 @@ class TOKEN(IntEnum):
             33: "valorInt",
             34: "valorChar",
             35: "valorFloat",
-            34: "[",
-            35: "]",
+            36: "[",
+            37: "]",
         }
         return nomes[token]
 
@@ -97,6 +97,7 @@ class TOKEN(IntEnum):
             "break": TOKEN.BREAK,
             "continue": TOKEN.CONTINUE,
             "return": TOKEN.RETURN,
+            "for": TOKEN.FOR,
         }
         if lexema in reservadas:
             return reservadas[lexema]

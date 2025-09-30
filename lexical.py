@@ -37,8 +37,7 @@ class Lexical:
             self.content = list(content)
             file.close()
         except FileNotFoundError:
-            print("File not found!")
-            return
+            raise FileNotFoundError
 
         self.content.append("\0")
 
@@ -154,7 +153,7 @@ class Lexical:
                 elif char == "/":
                     estado = 9
                 elif char == "%":
-                    return TOKEN.porcent, "%", lin, col
+                    return TOKEN.resto, "%", lin, col
                 elif char == "<":
                     estado = 5
                 elif char == ">":
