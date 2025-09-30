@@ -41,7 +41,7 @@ class Sintatico:
                 print(
                     f"Esperado: {msg_token_now} || Recebido: {msg}\nLin {linha} Col {coluna}"
                 )
-                raise Exception("Token unknow")
+                raise Exception(f"Token doesn't match: {msg}")
 
     """
         Program  ->  LAMBDA | Function Program
