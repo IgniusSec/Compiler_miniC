@@ -24,7 +24,7 @@ EXCLUDED_CHARS = [
     "&",
     "|",
 ]
-BROKEN_CHARS = ["\n", " ", ";", "{", "}", "(", ")", "[", "]"]
+BROKEN_CHARS = ["\n", " "]
 PATH_FILE = "teste.c"
 
 
@@ -188,7 +188,7 @@ class Lexical:
                 elif char == ".":
                     is_float = True
                     lexema += char
-                elif char in BROKEN_CHARS:
+                elif char in BROKEN_CHARS or char in EXCLUDED_CHARS:
                     self.unget_char(char)
                     if is_float:
                         return (TOKEN.valorFloat, lexema, lin, col)
