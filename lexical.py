@@ -50,7 +50,7 @@ class Lexical:
         self.token_atual = None
 
     def end_of_file(self):
-        return self.index >= (self.arq_size - self.comments)
+        return self.index >= (self.arq_size)
 
     # pega um char
     def get_char(self):
@@ -81,12 +81,19 @@ class Lexical:
         aux = index
         while self.content[aux] != "\n":
             self.content.pop(aux)
-            self.comments += 1
         # tira os \n pos comentário
-        while self.content[aux] == "\n":
-            self.content.pop(aux)
-            self.linha += 1
-            self.comments += 1
+        while self.content[aux] in ["\n", " "]:
+            if self.content[aux] == "\n":
+                self.content.pop(aux)
+                self.linha += 1
+                self.coluna = 1
+            elif self.content[aux] == " ":
+                self.content.pop(aux)
+                self.coluna += 1
+            else:
+                break
+
+        self.arq_size = len(self.content)
 
     """
         Retorna uma quadrupla com (tipo_token, token, linha do token, coluna do token)
