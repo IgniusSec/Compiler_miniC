@@ -13,9 +13,9 @@ class Sintatico:
         self.lexico = lexico
         self.lexico.token_atual = self.lexico.get_token()
 
-    def error_message(self, token, linha, coluna):
+    def error_message(self, token, lexema, linha, coluna):
         msg = TOKEN.msg(token)
-        print(f"Comando mal utilizado: {msg} || Lin{linha} Col{coluna}")
+        print(f"Comando mal utilizado: {msg}: {lexema} || Lin{linha} Col{coluna}")
         raise Exception("Command unknow")
 
     def test_lexico(self):
@@ -112,7 +112,7 @@ class Sintatico:
             self.consume(TOKEN.ident)
             self.opc_ident_arg()
         else:
-            self.error_message(token, linha, coluna)
+            self.error_message(token, lexema, linha, coluna)
 
     """
         OpcIdentArg ->  [ ] | LAMBDA
@@ -137,7 +137,7 @@ class Sintatico:
             self.stmt_list()
             self.consume(TOKEN.fechaChave)
         else:
-            self.error_message(token, linha, coluna)
+            self.error_message(token, lexema, linha, coluna)
 
     """
         StmtList ->  Stmt StmtList | LAMBDA
@@ -216,7 +216,7 @@ class Sintatico:
         elif token == TOKEN.ptoVirg:
             self.consume(TOKEN.ptoVirg)
         else:
-            self.error_message(token, linha, coluna)
+            self.error_message(token, lexema, linha, coluna)
 
     """
         ForStmt -> for ( Expr ; OptExpr ; OptExpr ) Stmt
@@ -315,7 +315,7 @@ class Sintatico:
         elif token == TOKEN.VOID:
             self.consume(TOKEN.VOID)
         else:
-            self.error_message(token, linha, coluna)
+            self.error_message(token, lexema, linha, coluna)
 
     """
         IdentList -> IdentDeclar RestoIdentList
@@ -348,7 +348,7 @@ class Sintatico:
             self.consume(TOKEN.ident)
             self.opc_ident_declar()
         else:
-            self.error_message(token, linha, coluna)
+            self.error_message(token, lexema, linha, coluna)
 
     """
         OpcIdentDeclar  ->  [ valorInt ] | LAMBDA
@@ -536,7 +536,7 @@ class Sintatico:
         elif token == TOKEN.valorString:
             self.consume(TOKEN.valorString)
         else:
-            self.error_message(token, linha, coluna)
+            self.error_message(token, lexema, linha, coluna)
 
     """
         Identifier ->  ident OpcIdentifier
@@ -602,7 +602,7 @@ class Sintatico:
 
 
 if __name__ == "__main__":
-    path = "teste.c"
+    path = "testeErro.c"
     lex = Lexical(path)
     sintatico = Sintatico(lex)
 
