@@ -39,7 +39,6 @@ class TOKEN(IntEnum):
     valorFloat = 35
     abreCol = 36
     fechaCol = 37
-    VOID = 38
 
     @classmethod
     def msg(cls, token):
@@ -81,7 +80,6 @@ class TOKEN(IntEnum):
             35: "valorFloat",
             36: "[",
             37: "]",
-            38: "void",
         }
         return nomes[token]
 
@@ -100,7 +98,6 @@ class TOKEN(IntEnum):
             "continue": TOKEN.CONTINUE,
             "return": TOKEN.RETURN,
             "for": TOKEN.FOR,
-            "void": TOKEN.VOID,
         }
         if lexema in reservadas:
             return reservadas[lexema]
