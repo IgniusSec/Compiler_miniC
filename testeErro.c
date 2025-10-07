@@ -1,29 +1,38 @@
-void main() {
+int main() {
 
   // Declarações corretas
-  int x = 10;
-  float y = 3.14;
-  char c = 'A';
+  int x;
+  x = 10;
+  float y;
+  y = 3.14;
+  char c;
+  c = 'A';
 
   // --- Situações intencionalmente erradas para testar o léxico ---
 
   // 1) identificador começando com dígito (inválido)
-  int 9var = 5;
+  int 9var;
+  9var = 5;
 
   // 2) número float mal formado (dois pontos)
-  float z = 3..14;
+  float z;
+  z = 3..14;
 
   // 3) número com letra no meio (erro léxico em número)
-  int a = 12a;
+  int a;
+  a = 12a;
 
   // 4) literal char com mais de um caractere (deveria ser erro/aviso)
-  char multi = 'AB';
+  char multi;
+  multi = 'AB';
 
   // 5) string não terminada
-  char s = "hello;
+  char s;
+  s = "hello;
 
       // 6) char não terminado
-      char unter = 'B
+      char unter;
+  unter = 'B;
 
       // 7) operador lógico inválido (&&&)
       if (x >= 10 && &y < 4.0) {
