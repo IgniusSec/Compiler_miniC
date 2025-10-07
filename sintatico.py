@@ -360,9 +360,10 @@ class Sintatico:
             self.consume(TOKEN.abreCol)
             self.consume(TOKEN.valorInt)
             self.consume(TOKEN.fechaCol)
-        elif token == TOKEN.atrib:
-            self.consume(TOKEN.atrib)
-            self.expr()
+        # retirando possibilidade de atribuição de valor na declaração da variável
+        # elif token == TOKEN.atrib:
+        #     self.consume(TOKEN.atrib)
+        #     self.expr()
         else:
             return
 
