@@ -398,6 +398,7 @@ class Sintatico:
     """
 
     def expr(self):
+        self.semantico.tipos_atrib = []
         self.log()
         self.resto_expr()
 
@@ -553,14 +554,23 @@ class Sintatico:
             self.expr()
             self.consume(TOKEN.fechaPar)
         elif token == TOKEN.ident:
+            self.semantico.tipos_atrib.append(
+                self.semantico.get_type_token(
+                    lexema, self.lexico.linha, self.lexico.coluna
+                )
+            )
             self.identifier()
         elif token == TOKEN.valorInt:
+            self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.valorInt)
         elif token == TOKEN.valorFloat:
+            self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.valorFloat)
         elif token == TOKEN.valorChar:
+            self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.valorChar)
         elif token == TOKEN.valorString:
+            self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.valorString)
         else:
             self.error_message(token, lexema, linha, coluna)
