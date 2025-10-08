@@ -1,10 +1,8 @@
 from lexical import Lexical, PATH_FILE
 from ttoken import TOKEN
-import sys
+from semantico import Semantico, TIPOS_ACEITOS
 
-import ttoken
-
-PERM_TYPES = [TOKEN.INT, TOKEN.FLOAT, TOKEN.CHAR, TOKEN.VOID]
+PERM_TYPES = [TOKEN.INT, TOKEN.FLOAT, TOKEN.CHAR]
 
 
 class Sintatico:
@@ -12,6 +10,7 @@ class Sintatico:
     def __init__(self, lexico: Lexical):
         self.lexico = lexico
         self.lexico.token_atual = self.lexico.get_token()
+        self.semantico = Semantico()
 
     def error_message(self, token, lexema, linha, coluna):
         msg = TOKEN.msg(token)
@@ -61,36 +60,47 @@ class Sintatico:
     """
 
     def function(self):
-        self.type()
+        retorno = self.type()
+        name = self.lexico.token_atual
+        # filtra o nome da função baseado no token atual
+        name = name[1]
         self.consume(TOKEN.ident)
         self.consume(TOKEN.abrePar)
-        self.arg_list()
+        args = self.arg_list()
         self.consume(TOKEN.fechaPar)
+
+        self.semantico.new_function(name, retorno, args)
+
+        self.semantico.add_scope(name)
         self.compound_stmt()
+        self.semantico.rem_scope()
 
     """
         ArgList ->  Arg RestoArgList | LAMBDA
     """
 
     def arg_list(self):
+        args = {}
         (token, lexema, linha, coluna) = self.lexico.token_atual
         # TODO: verificar se a comparação está correta
         if token in PERM_TYPES:
-            self.arg()
-            self.resto_arg_list()
-        else:
-            return
+            (name, tipo, is_vetor) = self.arg()
+            args[name] = (tipo, is_vetor)
+            self.resto_arg_list(args)
+
+        return args
 
     """
         RestoArgList -> , Arg RestoArgList | LAMBDA
     """
 
-    def resto_arg_list(self):
+    def resto_arg_list(self, args):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.virg:
             self.consume(TOKEN.virg)
-            self.arg()
-            self.resto_arg_list()
+            (name, tipo, is_vetor) = self.arg()
+            args[name] = (tipo, is_vetor)
+            self.resto_arg_list(args)
         else:
             return
 
@@ -99,8 +109,10 @@ class Sintatico:
     """
 
     def arg(self):
-        self.type()
-        self.ident_arg()
+        tipo = self.type()
+        (name, is_vetor) = self.ident_arg()
+
+        return (name, tipo, is_vetor)
 
     """
         IdentArg -> ident OpcIdentArg
@@ -109,10 +121,13 @@ class Sintatico:
     def ident_arg(self):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.ident:
+            name = lexema
             self.consume(TOKEN.ident)
-            self.opc_ident_arg()
+            is_vetor = self.opc_ident_arg()
         else:
             self.error_message(token, lexema, linha, coluna)
+
+        return (name, is_vetor)
 
     """
         OpcIdentArg ->  [ ] | LAMBDA
@@ -123,8 +138,11 @@ class Sintatico:
         if token == TOKEN.abreCol:
             self.consume(TOKEN.abreCol)
             self.consume(TOKEN.fechaCol)
+
+            # Retorna -1 para definir que o vetor não teve tamanho especificado mas é um vetor
+            return -1
         else:
-            return
+            return 0
 
     """
         CompoundStmt ->  { StmtList }
@@ -134,6 +152,7 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.abreChave:
             self.consume(TOKEN.abreChave)
+
             self.stmt_list()
             self.consume(TOKEN.fechaChave)
         else:
@@ -296,8 +315,8 @@ class Sintatico:
     """
 
     def declaration(self):
-        self.type()
-        self.ident_list()
+        tipo = self.type()
+        self.ident_list(tipo)
         self.consume(TOKEN.ptoVirg)
 
     """
@@ -308,12 +327,13 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.INT:
             self.consume(TOKEN.INT)
+            return TOKEN.INT
         elif token == TOKEN.FLOAT:
             self.consume(TOKEN.FLOAT)
+            return TOKEN.FLOAT
         elif token == TOKEN.CHAR:
             self.consume(TOKEN.CHAR)
-        elif token == TOKEN.VOID:
-            self.consume(TOKEN.VOID)
+            return TOKEN.CHAR
         else:
             self.error_message(token, lexema, linha, coluna)
 
@@ -321,20 +341,20 @@ class Sintatico:
         IdentList -> IdentDeclar RestoIdentList
     """
 
-    def ident_list(self):
-        self.ident_declar()
-        self.resto_ident_list()
+    def ident_list(self, tipo):
+        self.ident_declar(tipo)
+        self.resto_ident_list(tipo)
 
     """
         RestoIdentList -> , IdentDeclar RestoIdentList | LAMBDA
     """
 
-    def resto_ident_list(self):
+    def resto_ident_list(self, tipo):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.virg:
             self.consume(TOKEN.virg)
-            self.ident_declar()
-            self.resto_ident_list()
+            self.ident_declar(tipo)
+            self.resto_ident_list(tipo)
         else:
             return
 
@@ -342,11 +362,11 @@ class Sintatico:
         IdentDeclar   ->  ident OpcIdentDeclar
     """
 
-    def ident_declar(self):
+    def ident_declar(self, tipo):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.ident:
             self.consume(TOKEN.ident)
-            self.opc_ident_declar()
+            self.opc_ident_declar(tipo, lexema)
         else:
             self.error_message(token, lexema, linha, coluna)
 
@@ -354,17 +374,23 @@ class Sintatico:
         OpcIdentDeclar  ->  [ valorInt ] | LAMBDA
     """
 
-    def opc_ident_declar(self):
+    def opc_ident_declar(self, tipo, name):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.abreCol:
             self.consume(TOKEN.abreCol)
+
+            is_vetor = self.lexico.token_atual
+
             self.consume(TOKEN.valorInt)
             self.consume(TOKEN.fechaCol)
+
+            self.semantico.define_scope(name, tipo, is_vetor)
         # retirando possibilidade de atribuição de valor na declaração da variável
         # elif token == TOKEN.atrib:
         #     self.consume(TOKEN.atrib)
         #     self.expr()
         else:
+            self.semantico.define_scope(name, tipo, 0)
             return
 
     """
@@ -603,7 +629,7 @@ class Sintatico:
 
 
 if __name__ == "__main__":
-    path = "testeErro.c"
+    path = "teste2.c"
     lex = Lexical(path)
     sintatico = Sintatico(lex)
 
