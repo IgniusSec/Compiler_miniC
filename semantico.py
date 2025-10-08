@@ -13,6 +13,7 @@ class Semantico:
         # escopos são dicts com nome das funções
         self.scopes = [{}]
         self.defined_functions = {}
+        self.tipos_atrib = []
 
     """ Empilha """
 
@@ -57,14 +58,22 @@ class Semantico:
                 f'Erro semântico: Redeclaração de "{name}" no mesmo escopo.'
             )
 
+    def get_type_function(self, ident):
+        if self.is_function(ident):
+            return self.defined_functions[ident][0]
+        else:
+            raise Exception(f"Função não declarada: {ident}")
+
     def get_type_token(self, ident, linha, coluna):
+        escopo = self.scopes[-1]
         try:
-            for escopo in self.scopes:
-                if ident in escopo:
-                    return escopo[ident][0]
-                else:
-                    if ident in escopo[ident][1].keys():
-                        return escopo[0][1][ident][1]
+            if ident in escopo.keys():
+                return escopo[ident][0]
+            else:
+                vars = next(iter(escopo.values()))
+                vars = vars[1]
+                if ident in vars.keys():
+                    return vars[ident][0]
 
             raise Exception(
                 f'Variável "{ident}" não declarada. Linha: {linha}, coluna: {coluna}'
