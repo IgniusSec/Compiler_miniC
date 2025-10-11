@@ -7,10 +7,10 @@ PERM_TYPES = [TOKEN.INT, TOKEN.FLOAT, TOKEN.CHAR]
 
 class Sintatico:
 
-    def __init__(self, lexico: Lexical):
+    def __init__(self, lexico: Lexical, arq_semantico: str):
         self.lexico = lexico
         self.lexico.token_atual = self.lexico.get_token()
-        self.semantico = Semantico()
+        self.semantico = Semantico(arq_semantico)
 
     def error_message(self, token, lexema, linha, coluna):
         msg = TOKEN.msg(token)
@@ -197,6 +197,8 @@ class Sintatico:
     """
 
     def stmt(self):
+        # usado para verificar os tipos na atribuição
+        self.semantico.tipos_atrib = []
         pred = [
             TOKEN.NOT,
             TOKEN.mais,
@@ -227,7 +229,7 @@ class Sintatico:
             self.consume(TOKEN.RETURN)
             self.expr()
             self.consume(TOKEN.ptoVirg)
-        elif token in pred:
+        elif token in pred:  # atribuição
             self.expr()
             self.consume(TOKEN.ptoVirg)
         elif token in PERM_TYPES:
@@ -236,6 +238,10 @@ class Sintatico:
             self.consume(TOKEN.ptoVirg)
         else:
             self.error_message(token, lexema, linha, coluna)
+
+        # verifica se os tipos atribuidos são válidos
+        if self.semantico.tipos_atrib:
+            self.semantico.verifica_tipo(self.semantico.tipos_atrib)
 
     """
         ForStmt -> for ( Expr ; OptExpr ; OptExpr ) Stmt
@@ -398,7 +404,6 @@ class Sintatico:
     """
 
     def expr(self):
-        self.semantico.tipos_atrib = []
         self.log()
         self.resto_expr()
 
@@ -640,7 +645,8 @@ class Sintatico:
 
 if __name__ == "__main__":
     path = "teste2.c"
+    arq_sem = "testeSemantico.py"
     lex = Lexical(path)
-    sintatico = Sintatico(lex)
+    sintatico = Sintatico(lex, arq_sem)
 
     sintatico.program()

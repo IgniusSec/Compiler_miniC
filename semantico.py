@@ -8,12 +8,25 @@ TIPOS_ACEITOS = {
 }
 
 
+class ErroSemantico(Exception):
+    def __init__(self, permitidos, recebido):
+        mensagem = (
+            f"Tokens permitidos: {', '.join(TOKEN.msg(t) for t in permitidos)}\n"
+            f"Token recebido: {TOKEN.msg(recebido)}"
+        )
+        super().__init__(mensagem)
+
+
 class Semantico:
-    def __init__(self):
+    def __init__(self, arq):
         # escopos são dicts com nome das funções
         self.scopes = [{}]
         self.defined_functions = {}
         self.tipos_atrib = []
+        self.arq = open(arq, "wt")
+
+    def end_semantico(self):
+        self.arq.close()
 
     """ Empilha """
 
@@ -27,11 +40,12 @@ class Semantico:
 
     """Verifica compatibilidade de tipos em operações ou atribuições."""
 
-    def verifica_tipo(self, tipo_esperado, tipo_recebido):
-        if tipo_esperado != tipo_recebido:
-            raise Exception(
-                f"Erro semântico: Tipo incompatível. Esperado {tipo_esperado}, mas recebido {tipo_recebido}."
-            )
+    def verifica_tipo(self, vetor_tipos):
+        esperado = vetor_tipos.pop(0)
+        permitidos = TIPOS_ACEITOS[esperado]
+        for rec in vetor_tipos:
+            if rec not in permitidos:
+                raise ErroSemantico(permitidos, rec)
 
     """ define o scopo atual, colocando-o no final da pilha 
         retorno é o tipo de retorno e vars englobam tanto os parametros
@@ -97,3 +111,8 @@ class Semantico:
 
         vars[name] = (tipo, is_vetor)
         scope_now[scope] = (scope_now[scope][0], vars)
+
+    def generate_code(self, nivel, codigo):
+        ident = " " * 4 * nivel
+        linha = ident + codigo
+        self.alvo
