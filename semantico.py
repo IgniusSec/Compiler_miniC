@@ -9,11 +9,20 @@ TIPOS_ACEITOS = {
 
 
 class ErroSemantico(Exception):
-    def __init__(self, permitidos, recebido):
-        mensagem = (
-            f"Tokens permitidos: {', '.join(TOKEN.msg(t) for t in permitidos)}\n"
-            f"Token recebido: {TOKEN.msg(recebido)}"
-        )
+    def __init__(self, permitidos, recebido, msg):
+        mensagem = ""
+        if isinstance(permitidos, list):
+            mensagem = (
+                f"{msg}\n"
+                f"Tokens permitidos: {', '.join(TOKEN.msg(t) for t in permitidos)}\n"
+                f"Token recebido: {TOKEN.msg(recebido)}"
+            )
+        else:
+            mensagem = (
+                f"{msg}\n"
+                f"Tokens esperado: {TOKEN.msg(permitidos)}\n"
+                f"Token recebido: {TOKEN.msg(recebido)}"
+            )
         super().__init__(mensagem)
 
 
@@ -40,12 +49,34 @@ class Semantico:
 
     """Verifica compatibilidade de tipos em operações ou atribuições."""
 
-    def verifica_tipo(self, vetor_tipos):
-        esperado = vetor_tipos.pop(0)
-        permitidos = TIPOS_ACEITOS[esperado]
-        for rec in vetor_tipos:
-            if rec not in permitidos:
-                raise ErroSemantico(permitidos, rec)
+    def verifica_tipo(self, vetor_tipos: list, function):
+        if not function:
+            esperado = vetor_tipos.pop(0)
+            permitidos = TIPOS_ACEITOS[esperado]
+            for rec in vetor_tipos:
+                if rec not in permitidos:
+                    raise ErroSemantico(permitidos, rec, "Erro na atribuição")
+        else:
+            funcao_atual = self.defined_functions[function]
+            tipo_retorno = vetor_tipos.pop(0)
+            tipo_func = funcao_atual[0]
+
+            # verifica se o tipo da var de recebimento do retorno da função é igual ao tipo da função
+            if tipo_func != tipo_retorno:
+                raise ErroSemantico(
+                    TIPOS_ACEITOS[tipo_retorno],
+                    tipo_func,
+                    f"Erro no tipo de retorno da função {function}",
+                )
+
+            args = funcao_atual[1]
+            for tipo_input, (name_param, resto_param) in zip(vetor_tipos, args.items()):
+                if tipo_input != resto_param[0]:
+                    raise ErroSemantico(
+                        resto_param[0],
+                        tipo_input,
+                        f"Erro em um dos parâmetros da função: {function}",
+                    )
 
     """ define o scopo atual, colocando-o no final da pilha 
         retorno é o tipo de retorno e vars englobam tanto os parametros
@@ -81,8 +112,8 @@ class Semantico:
     def get_type_token(self, ident, linha, coluna):
         escopo = self.scopes[-1]
         try:
-            if ident in escopo.keys():
-                return escopo[ident][0]
+            if self.is_function(ident):
+                return self.defined_functions[ident][0]
             else:
                 vars = next(iter(escopo.values()))
                 vars = vars[1]

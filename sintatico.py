@@ -240,8 +240,12 @@ class Sintatico:
             self.error_message(token, lexema, linha, coluna)
 
         # verifica se os tipos atribuidos são válidos
-        if self.semantico.tipos_atrib:
-            self.semantico.verifica_tipo(self.semantico.tipos_atrib)
+        # verifica se há mais de um elemento na lista
+        if len(self.semantico.tipos_atrib) > 1:
+            if self.semantico.is_function(lexema):
+                self.semantico.verifica_tipo(self.semantico.tipos_atrib, lexema)
+            else:
+                self.semantico.verifica_tipo(self.semantico.tipos_atrib, None)
 
     """
         ForStmt -> for ( Expr ; OptExpr ; OptExpr ) Stmt
