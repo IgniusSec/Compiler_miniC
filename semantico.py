@@ -155,3 +155,12 @@ class Semantico:
         ident = " " * 4 * nivel
         linha = ident + codigo
         self.arq.write(linha)
+
+    def generate_function(self, nivel, funcao):
+        # tipo de retorno e tipo dos parametros foi ignorado mas pode ser adicionado caso necessário
+        func = self.defined_functions[funcao]
+        # retorno = func[0]
+        args = func[1]
+        texto = f"def {funcao}({','.join(args.keys())}):\n"
+
+        self.generate_code(nivel, texto)
