@@ -1,7 +1,6 @@
-from ttoken import TOKEN
+from ttoken import TOKEN, OPREL as OPREL
 import sys
 
-OPREL = [">", "<", ">=", "<=", "==", "!="]
 
 EXCLUDED_CHARS = [
     "(",

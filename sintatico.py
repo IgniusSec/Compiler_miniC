@@ -42,6 +42,15 @@ class Sintatico:
                 )
                 raise Exception(f"Token doesn't match: {msg}")
 
+    def verifica_tipos(self, lexema):
+        # verifica se os tipos atribuidos são válidos
+        # verifica se há mais de um elemento na lista
+        if len(self.semantico.tipos_atrib) > 1:
+            if self.semantico.is_function(lexema):
+                self.semantico.verifica_tipo(self.semantico.tipos_atrib, lexema)
+            else:
+                self.semantico.verifica_tipo(self.semantico.tipos_atrib, None)
+
     """
         Program  ->  LAMBDA | Function Program
     """
@@ -197,6 +206,7 @@ class Sintatico:
     """
 
     def stmt(self):
+        tipos_atrib = []
         # usado para verificar os tipos na atribuição
         self.semantico.tipos_atrib = []
         pred = [
@@ -239,13 +249,7 @@ class Sintatico:
         else:
             self.error_message(token, lexema, linha, coluna)
 
-        # verifica se os tipos atribuidos são válidos
-        # verifica se há mais de um elemento na lista
-        if len(self.semantico.tipos_atrib) > 1:
-            if self.semantico.is_function(lexema):
-                self.semantico.verifica_tipo(self.semantico.tipos_atrib, lexema)
-            else:
-                self.semantico.verifica_tipo(self.semantico.tipos_atrib, None)
+        self.verifica_tipos(lexema)
 
     """
         ForStmt -> for ( Expr ; OptExpr ; OptExpr ) Stmt
@@ -260,6 +264,7 @@ class Sintatico:
         self.consume(TOKEN.ptoVirg)
         self.opt_expr()
         self.consume(TOKEN.fechaPar)
+        self.verifica_tipos(None)
         self.stmt()
 
     """
@@ -294,6 +299,7 @@ class Sintatico:
         self.consume(TOKEN.abrePar)
         self.expr()
         self.consume(TOKEN.fechaPar)
+        self.verifica_tipos(None)
         self.stmt()
 
     """
@@ -305,6 +311,7 @@ class Sintatico:
         self.consume(TOKEN.abrePar)
         self.expr()
         self.consume(TOKEN.fechaPar)
+        self.verifica_tipos(None)
         self.stmt()
         self.else_part()
 
@@ -476,6 +483,7 @@ class Sintatico:
     def resto_rel(self):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.opRel:
+            self.semantico.tipos_atrib.append(lexema)
             self.consume(TOKEN.opRel)
             self.soma()
         else:

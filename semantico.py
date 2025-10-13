@@ -1,11 +1,13 @@
-from ttoken import TOKEN
+from ttoken import TOKEN, OPREL as OPREL
 
 
 TIPOS_ACEITOS = {
-    TOKEN.INT: [TOKEN.valorInt],
-    TOKEN.FLOAT: [TOKEN.valorInt, TOKEN.valorFloat],
+    TOKEN.INT: [TOKEN.valorInt, TOKEN.INT],
+    TOKEN.FLOAT: [TOKEN.valorInt, TOKEN.valorFloat, TOKEN.INT, TOKEN.FLOAT],
     TOKEN.CHAR: [TOKEN.CHAR, TOKEN.valorString],
 }
+
+TIPOS_NUMERICOS = [TOKEN.valorFloat, TOKEN.valorInt, TOKEN.INT, TOKEN.FLOAT]
 
 
 class ErroSemantico(Exception):
@@ -50,7 +52,13 @@ class Semantico:
     """Verifica compatibilidade de tipos em operações ou atribuições."""
 
     def verifica_tipo(self, vetor_tipos: list, function):
-        if not function:
+        if any(op in vetor_tipos for op in OPREL):
+            esperado = vetor_tipos.pop(0)
+            permitidos = TIPOS_ACEITOS[esperado]
+            for i in range(len(vetor_tipos)):
+                if vetor_tipos[i] not in OPREL and vetor_tipos[i] not in permitidos:
+                    raise ErroSemantico(permitidos, vetor_tipos[i], "Erro de relação")
+        elif not function:
             esperado = vetor_tipos.pop(0)
             permitidos = TIPOS_ACEITOS[esperado]
             for rec in vetor_tipos:
@@ -146,4 +154,4 @@ class Semantico:
     def generate_code(self, nivel, codigo):
         ident = " " * 4 * nivel
         linha = ident + codigo
-        self.alvo
+        self.arq.write(linha)

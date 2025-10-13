@@ -1,5 +1,7 @@
 from enum import IntEnum
 
+OPREL = [">", "<", ">=", "<=", "==", "!="]
+
 
 class TOKEN(IntEnum):
     erro = 1
@@ -42,6 +44,9 @@ class TOKEN(IntEnum):
 
     @classmethod
     def msg(cls, token):
+        if token in OPREL:
+            return "opRel"
+
         nomes = {
             1: "erro",
             2: "<eof>",
