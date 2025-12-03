@@ -108,3 +108,77 @@ class TOKEN(IntEnum):
             return reservadas[lexema]
         else:
             return TOKEN.ident
+
+    @classmethod
+    def tabelaOperacoes(cls):
+        table = {}
+
+        # --- Helper para Operações Binárias (Bi-direcionais) ---
+        # Registra (A, op, B) e automaticamente (B, op, A) se forem diferentes
+        def binaria(tipo1, op, tipo2, resultado):
+            # Registra a forma padrão: int + float
+            chave1 = (tipo1, op, tipo2)
+            table[chave1] = resultado
+
+            # Se os tipos forem diferentes, registra o inverso: float + int
+            if tipo1 != tipo2:
+                chave2 = (tipo2, op, tipo1)
+                table[chave2] = resultado
+
+        # --- Helper para Operações Unárias ---
+        # Registra apenas (op, A)
+        def unaria(op, tipo1, resultado):
+            table[(op, tipo1)] = resultado
+
+        # Definições curtas para legibilidade (opcional, mas ajuda)
+        INT_T = TOKEN.valorInt
+        FLOAT_T = TOKEN.valorFloat
+
+        # ==========================================
+        # 1. ARITMÉTICA
+        # ==========================================
+
+        # Int com Int
+        binaria(INT_T, TOKEN.mais, INT_T, INT_T)
+        binaria(INT_T, TOKEN.menos, INT_T, INT_T)
+        binaria(INT_T, TOKEN.multiplica, INT_T, INT_T)
+        binaria(INT_T, TOKEN.divide, INT_T, INT_T)
+        binaria(INT_T, TOKEN.resto, INT_T, INT_T)
+
+        # Float com Float
+        binaria(FLOAT_T, TOKEN.mais, FLOAT_T, FLOAT_T)
+        binaria(FLOAT_T, TOKEN.menos, FLOAT_T, FLOAT_T)
+        binaria(FLOAT_T, TOKEN.multiplica, FLOAT_T, FLOAT_T)
+        binaria(FLOAT_T, TOKEN.divide, FLOAT_T, FLOAT_T)
+
+        # Misto (Int e Float) -> Retorna Float
+        # A mágica acontece aqui: a função 'binaria' vai criar
+        # as chaves (Int, +, Float) E (Float, +, Int) automaticamente.
+        binaria(INT_T, TOKEN.mais, FLOAT_T, FLOAT_T)
+        binaria(INT_T, TOKEN.menos, FLOAT_T, FLOAT_T)
+        binaria(INT_T, TOKEN.multiplica, FLOAT_T, FLOAT_T)
+        binaria(INT_T, TOKEN.divide, FLOAT_T, FLOAT_T)
+
+        # ==========================================
+        # 2. RELACIONAIS (Retornam Int/Booleano)
+        # ==========================================
+        binaria(INT_T, TOKEN.opRel, INT_T, INT_T)
+        binaria(FLOAT_T, TOKEN.opRel, FLOAT_T, INT_T)
+        binaria(INT_T, TOKEN.opRel, FLOAT_T, INT_T)  # Gera ambos os casos
+
+        # ==========================================
+        # 3. LÓGICAS (Apenas Int)
+        # ==========================================
+        binaria(INT_T, TOKEN.AND, INT_T, INT_T)
+        binaria(INT_T, TOKEN.OR, INT_T, INT_T)
+        unaria(TOKEN.NOT, INT_T, INT_T)
+
+        # ==========================================
+        # 4. UNÁRIAS ARITMÉTICAS (+a, -a)
+        # ==========================================
+        unaria(TOKEN.mais, INT_T, INT_T)
+        unaria(TOKEN.menos, INT_T, INT_T)
+        unaria(TOKEN.mais, FLOAT_T, FLOAT_T)
+        unaria(TOKEN.menos, FLOAT_T, FLOAT_T)
+
+        return table

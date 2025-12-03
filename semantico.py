@@ -1,13 +1,50 @@
 from ttoken import TOKEN, OPREL as OPREL
+import copy
+
+vars_type = [TOKEN.INT, TOKEN.FLOAT, TOKEN.CHAR]
 
 
-TIPOS_ACEITOS = {
-    TOKEN.INT: [TOKEN.valorInt, TOKEN.INT],
-    TOKEN.FLOAT: [TOKEN.valorInt, TOKEN.valorFloat, TOKEN.INT, TOKEN.FLOAT],
-    TOKEN.CHAR: [TOKEN.CHAR, TOKEN.valorString],
-}
+def type_var(var):
+    if var == TOKEN.INT:
+        return TOKEN.valorInt
+    elif var == TOKEN.FLOAT:
+        return TOKEN.valorFloat
+    elif var == TOKEN.CHAR:
+        return TOKEN.valorChar
+    else:
+        return var
 
-TIPOS_NUMERICOS = [TOKEN.valorFloat, TOKEN.valorInt, TOKEN.INT, TOKEN.FLOAT]
+
+def returnTypeOfVars(vet):
+    i = 0
+    aux = []
+    while i < len(vet):
+        aux.append(type_var(vet[i]))
+        i += 1
+
+    return aux
+
+
+class ErroFunction(Exception):
+    def __init__(self, esperado, recebido, msg):
+        mensagem = (
+            f"{msg}\n"
+            f"Tokens esperado: {TOKEN.msg(esperado)}\n"
+            f"Token recebido: {TOKEN.msg(recebido)}"
+        )
+        super().__init__(mensagem)
+
+
+class ErroFunctionParams(Exception):
+    def __init__(self, esperado, recebido):
+        mensagem = f"Número de parametros incorretos: Esperado {esperado} | Recebido {recebido}"
+        super().__init__(mensagem)
+
+
+class ErroTipo(Exception):
+    def __init__(self, msg):
+        mensagem = f"Erro de operação: {msg}"
+        super().__init__(mensagem)
 
 
 class ErroSemantico(Exception):
@@ -35,6 +72,20 @@ class Semantico:
         self.defined_functions = {}
         self.tipos_atrib = []
         self.arq = open(arq, "wt")
+        self.tabelaOperacoes = TOKEN.tabelaOperacoes()
+
+        # funções predefinidas
+        self.new_function("putchar", TOKEN.valorChar, {"x": (TOKEN.valorChar, 0)})
+        self.new_function("getchar", TOKEN.valorChar, dict())
+
+        self.new_function("putint", TOKEN.valorInt, {"x": (TOKEN.valorInt, 0)})
+        self.new_function("getint", TOKEN.valorInt, dict())
+
+        self.new_function("putfloat", TOKEN.valorFloat, {"x": (TOKEN.valorFloat, 0)})
+        self.new_function("getfloat", TOKEN.valorFloat, dict())
+
+        self.new_function("putstr", TOKEN.valorString, {"x": (TOKEN.valorInt, 0)})
+        self.new_function("getstr", TOKEN.valorString, dict())
 
     def end_semantico(self):
         self.arq.close()
@@ -42,49 +93,102 @@ class Semantico:
     """ Empilha """
 
     def add_scope(self, name):
-        self.scopes.append({name: self.defined_functions[name]})
+        self.scopes.append({name: copy.deepcopy(self.defined_functions[name])})
 
     """ desempilha """
 
     def rem_scope(self):
         self.scopes.pop()
 
+    def verifica_atribs(self, vetor_tipos: list):
+        esperado = vetor_tipos.pop(0)
+        esperado = type_var(esperado)
+        if len(vetor_tipos) > 1:
+            table = tuple(returnTypeOfVars(vetor_tipos))
+        else:
+            table = (TOKEN.mais, type_var(vetor_tipos[0]))
+        keys = self.tabelaOperacoes.keys()
+        if table in self.tabelaOperacoes.keys():
+            result = self.tabelaOperacoes[table]
+            if result != esperado:
+                raise ErroTipo(
+                    f"{TOKEN.msg(esperado)} {TOKEN.msg(vetor_tipos[1])} {TOKEN.msg(vetor_tipos[2])}"
+                )
+        else:
+            if len(vetor_tipos) > 1:
+                raise ErroTipo(
+                    f"{TOKEN.msg(esperado)} {TOKEN.msg(vetor_tipos[1])} {TOKEN.msg(vetor_tipos[2])}"
+                )
+            else:
+                raise ErroTipo(f"{TOKEN.msg(esperado)} {TOKEN.msg(vetor_tipos[0])}")
+
     """Verifica compatibilidade de tipos em operações ou atribuições."""
 
     def verifica_tipo(self, vetor_tipos: list, function):
-        if any(op in vetor_tipos for op in OPREL):
-            esperado = vetor_tipos.pop(0)
-            permitidos = TIPOS_ACEITOS[esperado]
-            for i in range(len(vetor_tipos)):
-                if vetor_tipos[i] not in OPREL and vetor_tipos[i] not in permitidos:
-                    raise ErroSemantico(permitidos, vetor_tipos[i], "Erro de relação")
-        elif not function:
-            esperado = vetor_tipos.pop(0)
-            permitidos = TIPOS_ACEITOS[esperado]
-            for rec in vetor_tipos:
-                if rec not in permitidos:
-                    raise ErroSemantico(permitidos, rec, "Erro na atribuição")
-        else:
-            funcao_atual = self.defined_functions[function]
-            tipo_retorno = vetor_tipos.pop(0)
-            tipo_func = funcao_atual[0]
+        if len(vetor_tipos) > 2:
+            if TOKEN.opRel in vetor_tipos:
+                aux = len(vetor_tipos)
+                div = []
+                div.append([])
+                control1 = 0
+                for i in range(aux):
+                    if vetor_tipos[i] == TOKEN.ptoVirg:
+                        div.append([])
+                        control1 += 1
+                    else:
+                        div[control1].append(vetor_tipos[i])
 
-            # verifica se o tipo da var de recebimento do retorno da função é igual ao tipo da função
-            if tipo_func != tipo_retorno:
-                raise ErroSemantico(
-                    TIPOS_ACEITOS[tipo_retorno],
-                    tipo_func,
-                    f"Erro no tipo de retorno da função {function}",
-                )
+                for vet in div:
+                    if TOKEN.opRel in vet:
+                        table = tuple(returnTypeOfVars(vet))
+                        if table not in self.tabelaOperacoes.keys():
+                            raise ErroTipo(
+                                f"{TOKEN.msg(vetor_tipos[0])} {TOKEN.msg(vetor_tipos[1])} {TOKEN.msg(vetor_tipos[2])}"
+                            )
+                    else:
+                        self.verifica_atribs(vet)
 
-            args = funcao_atual[1]
-            for tipo_input, (name_param, resto_param) in zip(vetor_tipos, args.items()):
-                if tipo_input != resto_param[0]:
+            elif not function:
+                self.verifica_atribs(vetor_tipos)
+            else:
+                funcao_atual = self.defined_functions[function]
+                tipo_retorno = vetor_tipos.pop(0)
+
+                # verifica quantia de parametros da função
+                totParamFunc = len(funcao_atual[1])
+                totParamsPassed = len(vetor_tipos)
+                if totParamFunc != totParamsPassed:
+                    raise ErroFunctionParams(totParamFunc, totParamsPassed)
+
+                tipo_retorno = type_var(tipo_retorno)
+                tipo_func = funcao_atual[0]
+                tipo_func = type_var(tipo_func)
+
+                # verifica se o tipo da var de recebimento do retorno da função é igual ao tipo da função
+                if tipo_func != tipo_retorno:
                     raise ErroSemantico(
-                        resto_param[0],
-                        tipo_input,
-                        f"Erro em um dos parâmetros da função: {function}",
+                        tipo_func,
+                        tipo_retorno,
+                        f"Erro no tipo de retorno da função {function}",
                     )
+
+                args = funcao_atual[1]
+                for tipo_input, (name_param, resto_param) in zip(
+                    vetor_tipos, args.items()
+                ):
+                    tipo_input = type_var(tipo_input)
+                    resto_param = type_var(resto_param[0])
+                    if tipo_input != resto_param:
+                        raise ErroSemantico(
+                            resto_param,
+                            tipo_input,
+                            f"Erro em um dos parâmetros da função: {function}",
+                        )
+        else:
+            if function:
+                raise ErroFunctionParams(
+                    len(self.defined_functions[function][1]), len(vetor_tipos) - 1
+                )
 
     """ define o scopo atual, colocando-o no final da pilha 
         retorno é o tipo de retorno e vars englobam tanto os parametros
@@ -161,6 +265,18 @@ class Semantico:
         func = self.defined_functions[funcao]
         # retorno = func[0]
         args = func[1]
-        texto = f"def {funcao}({','.join(args.keys())}):\n"
+
+        texto = f"def {funcao}("
+
+        keys = list(args.keys())
+        lim = len(args.items())
+        for i in range(lim):
+            texto += f"{keys[i]}: {TOKEN.msg(args[keys[i]][0])}"
+            if i < (lim - 1):
+                texto += ", "
+            else:
+                texto += ")"
+
+        texto += f" -> {TOKEN.msg(func[0])}:\n"
 
         self.generate_code(nivel, texto)
