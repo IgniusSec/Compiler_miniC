@@ -6,8 +6,9 @@ PERM_TYPES = [TOKEN.INT, TOKEN.FLOAT, TOKEN.CHAR]
 
 
 class ErrorSintatico(Exception):
-    def __init__(self, msg):
+    def __init__(self, msg, linha, coluna):
         mensagem = f"{msg}\n"
+        mensagem += f"\nLinha {linha} x Coluna {coluna}"
         super().__init__(mensagem)
 
 
@@ -17,6 +18,9 @@ class Sintatico:
         self.lexico = lexico
         self.lexico.token_atual = self.lexico.get_token()
         self.semantico = Semantico(arq_semantico)
+
+        self.semantico.generate_code(0, '\nif __name__ == "__main__":\n', 0)
+        self.semantico.generate_code(1, "main()\n\n\n", 0)
 
     def error_message(self, token, lexema, linha, coluna):
         msg = TOKEN.msg(token)
@@ -48,17 +52,21 @@ class Sintatico:
                 )
                 raise Exception(f"Token doesn't match: {msg}")
 
-    def verifica_tipos(self, lexema):
+    def verifica_tipos(self, lexema, linha, coluna):
         # verifica se os tipos atribuidos são válidos
         # verifica se há mais de um elemento na lista
         if len(self.semantico.tipos_atrib) > 1:
             if self.semantico.is_function(lexema):
-                self.semantico.verifica_tipo(self.semantico.tipos_atrib, lexema)
+                self.semantico.verifica_tipo(
+                    self.semantico.tipos_atrib, lexema, linha, coluna
+                )
             else:
-                self.semantico.verifica_tipo(self.semantico.tipos_atrib, None)
+                self.semantico.verifica_tipo(
+                    self.semantico.tipos_atrib, None, linha, coluna
+                )
         elif self.semantico.is_function(lexema):
             raise ErroFunctionParams(
-                len(self.semantico.defined_functions[lexema][1]), 0
+                len(self.semantico.defined_functions[lexema][1]), 0, linha, coluna
             )
 
     """
@@ -72,8 +80,6 @@ class Sintatico:
             self.function()
             self.program()
 
-            self.semantico.generate_code(0, '\nif __name__ == "__main__":\n')
-            self.semantico.generate_code(1, "main()\n")
         else:
             return
 
@@ -99,7 +105,7 @@ class Sintatico:
         self.semantico.add_scope(name)
         self.compound_stmt(1)
         self.semantico.rem_scope()
-        self.semantico.generate_code(0, "\n\n")
+        self.semantico.generate_code(0, "\n\n", 0)
 
     """
         ArgList ->  Arg RestoArgList | LAMBDA
@@ -126,7 +132,7 @@ class Sintatico:
             self.consume(TOKEN.virg)
             (name, tipo, is_vetor) = self.arg()
             if name in args.keys():
-                raise ErrorSintatico(f"Erro, {name} já foi declarado!")
+                raise ErrorSintatico(f"Erro, {name} já foi declarado!", linha, coluna)
             args[name] = (tipo, is_vetor)
             self.resto_arg_list(args)
         else:
@@ -240,54 +246,59 @@ class Sintatico:
         ]
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.FOR:
-            self.for_stmt(ident)
+            self.for_stmt(ident, linha, coluna)
         elif token == TOKEN.WHILE:
-            self.while_stmt(ident)
+            self.while_stmt(ident, linha, coluna)
         elif token == TOKEN.IF:
-            self.if_stmt(ident)
+            self.if_stmt(ident, linha, coluna)
         elif token == TOKEN.abreChave:
+            self.semantico.generate_code(0, "\n", 0)
             self.compound_stmt(ident)
         elif token == TOKEN.BREAK:
             self.consume(TOKEN.BREAK)
             self.consume(TOKEN.ptoVirg)
+            self.semantico.generate_code(ident, "\n", 0)
         elif token == TOKEN.CONTINUE:
             self.consume(TOKEN.CONTINUE)
             self.consume(TOKEN.ptoVirg)
+            self.semantico.generate_code(ident, "\n", 0)
         elif token == TOKEN.RETURN:
             self.consume(TOKEN.RETURN)
-            self.semantico.generate_code(ident, "return ")
+            self.semantico.generate_code(ident, "return", 1)
             self.expr(0)
-            self.verifica_tipos(lexema)
+            self.verifica_tipos(lexema, linha, coluna)
             self.consume(TOKEN.ptoVirg)
+            self.semantico.generate_code(ident, "\n", 0)
         elif token in pred:  # atribuição
             self.expr(ident)
-            self.verifica_tipos(lexema)
+            self.verifica_tipos(lexema, linha, coluna)
             self.consume(TOKEN.ptoVirg)
+            self.semantico.generate_code(ident, "\n", 0)
         elif token in PERM_TYPES:
-            self.declaration()
+            self.declaration(ident)
         elif token == TOKEN.ptoVirg:
             self.consume(TOKEN.ptoVirg)
         else:
             self.error_message(token, lexema, linha, coluna)
 
-        self.semantico.generate_code(ident, "\n")
-
     """
         ForStmt -> for ( Expr ; OptExpr ; OptExpr ) Stmt
     """
 
-    def for_stmt(self, ident):
+    def for_stmt(self, ident, linha, coluna):
         self.consume(TOKEN.FOR)
+        self.semantico.generate_code(ident, "for", 1)
         self.consume(TOKEN.abrePar)
-        self.expr(ident)
+        self.expr(0)
         self.consume(TOKEN.ptoVirg)
         self.semantico.tipos_atrib.append(TOKEN.ptoVirg)
-        self.opt_expr(ident)
+        self.opt_expr(0)
         self.consume(TOKEN.ptoVirg)
         self.semantico.tipos_atrib.append(TOKEN.ptoVirg)
-        self.opt_expr(ident)
+        self.opt_expr(0)
         self.consume(TOKEN.fechaPar)
-        self.verifica_tipos(None)
+        self.semantico.generate_code(0, ":", 0)
+        self.verifica_tipos(None, linha, coluna)
         self.stmt(ident + 1)
 
     """
@@ -317,24 +328,28 @@ class Sintatico:
         WhileStmt -> while ( Expr ) Stmt
     """
 
-    def while_stmt(self, ident):
+    def while_stmt(self, ident, linha, coluna):
         self.consume(TOKEN.WHILE)
+        self.semantico.generate_code(ident, "while", 1)
         self.consume(TOKEN.abrePar)
-        self.expr(ident)
+        self.expr(0)
         self.consume(TOKEN.fechaPar)
-        self.verifica_tipos(None)
+        self.semantico.generate_code(0, ":", 0)
+        self.verifica_tipos(None, linha, coluna)
         self.stmt(ident + 1)
 
     """
         IfStmt -> if ( Expr ) Stmt ElsePart
     """
 
-    def if_stmt(self, ident):
+    def if_stmt(self, ident, linha, coluna):
         self.consume(TOKEN.IF)
+        self.semantico.generate_code(ident, "if", 1)
         self.consume(TOKEN.abrePar)
-        self.expr(ident)
+        self.expr(0)
         self.consume(TOKEN.fechaPar)
-        self.verifica_tipos(None)
+        self.semantico.generate_code(0, ":", 0)
+        self.verifica_tipos(None, linha, coluna)
         self.stmt(ident + 1)
         self.else_part(ident)
 
@@ -346,6 +361,8 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.ELSE:
             self.consume(TOKEN.ELSE)
+            self.semantico.generate_code(ident, "else", 0)
+            self.semantico.generate_code(0, ":", 0)
             self.stmt(ident + 1)
         else:
             return
@@ -354,7 +371,7 @@ class Sintatico:
         Declaration -> Type IdentList ;
     """
 
-    def declaration(self):
+    def declaration(self, ident):
         tipo = self.type()
         self.ident_list(tipo)
         self.consume(TOKEN.ptoVirg)
@@ -439,7 +456,7 @@ class Sintatico:
 
     def expr(self, ident):
         self.log(ident)
-        self.resto_expr(ident)
+        self.resto_expr(0)
 
     """
         RestoExpr ->  = Expr RestoExpr | LAMBDA
@@ -449,6 +466,7 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.atrib:
             self.consume(TOKEN.atrib)
+            self.semantico.generate_code(0, "=", 1)
             self.expr(ident)
             self.resto_expr(ident)
         else:
@@ -470,10 +488,12 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.AND:
             self.consume(TOKEN.AND)
+            self.semantico.generate_code(0, "and", 1)
             self.nao(ident)
             self.resto_log(ident)
         elif token == TOKEN.OR:
             self.consume(TOKEN.OR)
+            self.semantico.generate_code(0, "or", 1)
             self.nao(ident)
             self.resto_log(ident)
         else:
@@ -487,6 +507,7 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.NOT:
             self.consume(TOKEN.NOT)
+            self.semantico.generate_code(0, "not", 1)
             self.nao(ident)
         else:
             self.rel(ident)
@@ -507,7 +528,7 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.opRel:
             self.semantico.tipos_atrib.append(token)
-            self.semantico.generate_code(ident, lexema)
+            self.semantico.generate_code(0, lexema, 1)
             self.consume(TOKEN.opRel)
             self.soma(ident)
         else:
@@ -530,11 +551,13 @@ class Sintatico:
         if token == TOKEN.mais:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.mais)
+            self.semantico.generate_code(0, lexema, 1)
             self.mult(ident)
             self.resto_soma(ident)
         elif token == TOKEN.menos:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.menos)
+            self.semantico.generate_code(0, lexema, 1)
             self.mult(ident)
             self.resto_soma(ident)
         else:
@@ -558,16 +581,19 @@ class Sintatico:
         if token == TOKEN.multiplica:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.multiplica)
+            self.semantico.generate_code(0, lexema, 1)
             self.uno(ident)
             self.resto_mult(ident)
         elif token == TOKEN.divide:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.divide)
+            self.semantico.generate_code(0, lexema, 1)
             self.uno(ident)
             self.resto_mult(ident)
         elif token == TOKEN.resto:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.resto)
+            self.semantico.generate_code(0, lexema, 1)
             self.uno(ident)
             self.resto_mult(ident)
         else:
@@ -582,10 +608,12 @@ class Sintatico:
         if token == TOKEN.mais:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.mais)
+            self.semantico.generate_code(0, lexema, 1)
             self.uno(ident)
         elif token == TOKEN.menos:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.menos)
+            self.semantico.generate_code(0, lexema, 1)
             self.uno(ident)
         else:
             self.folha(ident)
@@ -599,31 +627,40 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.abrePar:
             self.consume(TOKEN.abrePar)
+            self.semantico.generate_code(0, lexema, 1)
             self.expr(ident)
             self.consume(TOKEN.fechaPar)
+            self.semantico.generate_code(0, ")", 0)
         elif token == TOKEN.ident:
             self.semantico.tipos_atrib.append(
                 self.semantico.get_type_token(
                     lexema, self.lexico.linha, self.lexico.coluna
                 )
             )
+
+            if self.semantico.is_function(lexema):
+                self.semantico.generate_code(ident, lexema, 0)
+            else:
+                self.semantico.generate_code(ident, lexema, 1)
             self.identifier(ident)
         elif token == TOKEN.valorInt:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.valorInt)
+            self.semantico.generate_code(0, lexema, 1)
         elif token == TOKEN.valorFloat:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.valorFloat)
+            self.semantico.generate_code(0, lexema, 1)
         elif token == TOKEN.valorChar:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.valorChar)
+            self.semantico.generate_code(0, lexema, 1)
         elif token == TOKEN.valorString:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.valorString)
+            self.semantico.generate_code(0, lexema, 1)
         else:
             self.error_message(token, lexema, linha, coluna)
-
-        self.semantico.generate_code(ident, lexema)
 
     """
         Identifier ->  ident OpcIdentifier
@@ -641,12 +678,16 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.abreCol:
             self.consume(TOKEN.abreCol)
-            self.expr(ident)
+            self.semantico.generate_code(0, lexema, 1)
+            self.expr(0)
             self.consume(TOKEN.fechaCol)
+            self.semantico.generate_code(0, "]", 0)
         elif token == TOKEN.abrePar:
             self.consume(TOKEN.abrePar)
-            self.params(ident)
+            self.semantico.generate_code(0, lexema, 1)
+            self.params(0)
             self.consume(TOKEN.fechaPar)
+            self.semantico.generate_code(0, ")", 1)
         else:
             return
 
@@ -682,6 +723,7 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.virg:
             self.consume(TOKEN.virg)
+            self.semantico.generate_code(ident, lexema, 1)
             self.expr(ident)
             self.resto_params(ident)
         else:
@@ -689,7 +731,7 @@ class Sintatico:
 
 
 if __name__ == "__main__":
-    path = "mini_c_teste.c"
+    path = "example2.c"
     arq_sem = "testeSemantico.py"
     lex = Lexical(path)
     sintatico = Sintatico(lex, arq_sem)
