@@ -18,6 +18,10 @@ class Sintatico:
         self.lexico = lexico
         self.lexico.token_atual = self.lexico.get_token()
         self.semantico = Semantico(arq_semantico)
+        self.vetor = False
+        self.is_increment = False
+        self.increment_for = []
+        self.posi_increment = -1
 
         self.semantico.generate_code(0, '\nif __name__ == "__main__":\n', 0)
         self.semantico.generate_code(1, "main()\n\n\n", 0)
@@ -233,6 +237,7 @@ class Sintatico:
     def stmt(self, ident):
         # usado para verificar os tipos na atribuição
         self.semantico.tipos_atrib = []
+        self.vetor = False
         pred = [
             TOKEN.NOT,
             TOKEN.mais,
@@ -287,19 +292,34 @@ class Sintatico:
 
     def for_stmt(self, ident, linha, coluna):
         self.consume(TOKEN.FOR)
-        self.semantico.generate_code(ident, "for", 1)
+        self.semantico.generate_code(
+            ident, "# Simulando for de C usando while em python\n", 0
+        )
         self.consume(TOKEN.abrePar)
-        self.expr(0)
+        self.expr(ident)
         self.consume(TOKEN.ptoVirg)
         self.semantico.tipos_atrib.append(TOKEN.ptoVirg)
+        self.semantico.generate_code(0, "\n", 0)
+        self.semantico.generate_code(ident, "while", 1)
         self.opt_expr(0)
         self.consume(TOKEN.ptoVirg)
         self.semantico.tipos_atrib.append(TOKEN.ptoVirg)
+        self.semantico.generate_code(0, ":\n", 0)
+        self.is_increment = True
+        self.posi_increment += 1
+        self.increment_for.append(str())
         self.opt_expr(0)
+        self.is_increment = False
         self.consume(TOKEN.fechaPar)
-        self.semantico.generate_code(0, ":", 0)
         self.verifica_tipos(None, linha, coluna)
         self.stmt(ident + 1)
+        self.semantico.generate_code(
+            ident + 1, self.increment_for[self.posi_increment], 0
+        )
+        self.semantico.generate_code(0, "\n", 0)
+        if self.posi_increment >= 0:
+            self.increment_for.pop()
+            self.posi_increment -= 1
 
     """
         OptExpr -> Expr | LAMBDA
@@ -373,7 +393,7 @@ class Sintatico:
 
     def declaration(self, ident):
         tipo = self.type()
-        self.ident_list(tipo)
+        self.ident_list(tipo, ident)
         self.consume(TOKEN.ptoVirg)
 
     """
@@ -398,20 +418,20 @@ class Sintatico:
         IdentList -> IdentDeclar RestoIdentList
     """
 
-    def ident_list(self, tipo):
-        self.ident_declar(tipo)
-        self.resto_ident_list(tipo)
+    def ident_list(self, tipo, ident):
+        self.ident_declar(tipo, ident)
+        self.resto_ident_list(tipo, ident)
 
     """
         RestoIdentList -> , IdentDeclar RestoIdentList | LAMBDA
     """
 
-    def resto_ident_list(self, tipo):
+    def resto_ident_list(self, tipo, ident):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.virg:
             self.consume(TOKEN.virg)
-            self.ident_declar(tipo)
-            self.resto_ident_list(tipo)
+            self.ident_declar(tipo, ident)
+            self.resto_ident_list(tipo, ident)
         else:
             return
 
@@ -419,11 +439,13 @@ class Sintatico:
         IdentDeclar   ->  ident OpcIdentDeclar
     """
 
-    def ident_declar(self, tipo):
+    def ident_declar(self, tipo, ident):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.ident:
             self.consume(TOKEN.ident)
-            self.opc_ident_declar(tipo, lexema)
+            self.semantico.generate_code(ident, lexema, 0)
+            self.opc_ident_declar(tipo, lexema, ident)
+            self.semantico.generate_code(0, "\n", 0)
         else:
             self.error_message(token, lexema, linha, coluna)
 
@@ -431,15 +453,19 @@ class Sintatico:
         OpcIdentDeclar  ->  [ valorInt ] | LAMBDA
     """
 
-    def opc_ident_declar(self, tipo, name):
+    def opc_ident_declar(self, tipo, name, ident):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.abreCol:
             self.consume(TOKEN.abreCol)
+            self.semantico.generate_code(0, "[", 1)
 
             is_vetor = self.lexico.token_atual
 
+            (token, lexema, linha, coluna) = self.lexico.token_atual
+            self.semantico.generate_code(0, lexema, 1)
             self.consume(TOKEN.valorInt)
             self.consume(TOKEN.fechaCol)
+            self.semantico.generate_code(0, "]", 0)
 
             self.semantico.define_scope(name, tipo, is_vetor)
         # retirando possibilidade de atribuição de valor na declaração da variável
@@ -466,7 +492,10 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.atrib:
             self.consume(TOKEN.atrib)
-            self.semantico.generate_code(0, "=", 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += "= "
+            else:
+                self.semantico.generate_code(0, "=", 1)
             self.expr(ident)
             self.resto_expr(ident)
         else:
@@ -488,12 +517,18 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.AND:
             self.consume(TOKEN.AND)
-            self.semantico.generate_code(0, "and", 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += "and "
+            else:
+                self.semantico.generate_code(0, "and", 1)
             self.nao(ident)
             self.resto_log(ident)
         elif token == TOKEN.OR:
             self.consume(TOKEN.OR)
-            self.semantico.generate_code(0, "or", 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += "or "
+            else:
+                self.semantico.generate_code(0, "or", 1)
             self.nao(ident)
             self.resto_log(ident)
         else:
@@ -507,7 +542,10 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.NOT:
             self.consume(TOKEN.NOT)
-            self.semantico.generate_code(0, "not", 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += "not "
+            else:
+                self.semantico.generate_code(0, "not", 1)
             self.nao(ident)
         else:
             self.rel(ident)
@@ -528,7 +566,11 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.opRel:
             self.semantico.tipos_atrib.append(token)
-            self.semantico.generate_code(0, lexema, 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += lexema
+                self.increment_for[self.posi_increment] += " "
+            else:
+                self.semantico.generate_code(0, lexema, 1)
             self.consume(TOKEN.opRel)
             self.soma(ident)
         else:
@@ -549,15 +591,25 @@ class Sintatico:
     def resto_soma(self, ident):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.mais:
-            self.semantico.tipos_atrib.append(token)
+            if not self.vetor:
+                self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.mais)
-            self.semantico.generate_code(0, lexema, 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += lexema
+                self.increment_for[self.posi_increment] += " "
+            else:
+                self.semantico.generate_code(0, lexema, 1)
             self.mult(ident)
             self.resto_soma(ident)
         elif token == TOKEN.menos:
-            self.semantico.tipos_atrib.append(token)
+            if not self.vetor:
+                self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.menos)
-            self.semantico.generate_code(0, lexema, 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += lexema
+                self.increment_for[self.posi_increment] += " "
+            else:
+                self.semantico.generate_code(0, lexema, 1)
             self.mult(ident)
             self.resto_soma(ident)
         else:
@@ -579,21 +631,36 @@ class Sintatico:
     def resto_mult(self, ident):
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.multiplica:
-            self.semantico.tipos_atrib.append(token)
+            if not self.vetor:
+                self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.multiplica)
-            self.semantico.generate_code(0, lexema, 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += lexema
+                self.increment_for[self.posi_increment] += " "
+            else:
+                self.semantico.generate_code(0, lexema, 1)
             self.uno(ident)
             self.resto_mult(ident)
         elif token == TOKEN.divide:
-            self.semantico.tipos_atrib.append(token)
+            if not self.vetor:
+                self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.divide)
-            self.semantico.generate_code(0, lexema, 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += lexema
+                self.increment_for[self.posi_increment] += " "
+            else:
+                self.semantico.generate_code(0, lexema, 1)
             self.uno(ident)
             self.resto_mult(ident)
         elif token == TOKEN.resto:
-            self.semantico.tipos_atrib.append(token)
+            if not self.vetor:
+                self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.resto)
-            self.semantico.generate_code(0, lexema, 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += lexema
+                self.increment_for[self.posi_increment] += " "
+            else:
+                self.semantico.generate_code(0, lexema, 1)
             self.uno(ident)
             self.resto_mult(ident)
         else:
@@ -608,12 +675,20 @@ class Sintatico:
         if token == TOKEN.mais:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.mais)
-            self.semantico.generate_code(0, lexema, 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += lexema
+                self.increment_for[self.posi_increment] += " "
+            else:
+                self.semantico.generate_code(0, lexema, 1)
             self.uno(ident)
         elif token == TOKEN.menos:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.menos)
-            self.semantico.generate_code(0, lexema, 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += lexema
+                self.increment_for[self.posi_increment] += " "
+            else:
+                self.semantico.generate_code(0, lexema, 1)
             self.uno(ident)
         else:
             self.folha(ident)
@@ -627,38 +702,71 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.abrePar:
             self.consume(TOKEN.abrePar)
-            self.semantico.generate_code(0, lexema, 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += lexema
+                self.increment_for[self.posi_increment] += " "
+            else:
+                self.semantico.generate_code(0, lexema, 1)
             self.expr(ident)
             self.consume(TOKEN.fechaPar)
-            self.semantico.generate_code(0, ")", 0)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += ") "
+            else:
+                self.semantico.generate_code(0, ")", 0)
         elif token == TOKEN.ident:
-            self.semantico.tipos_atrib.append(
-                self.semantico.get_type_token(
-                    lexema, self.lexico.linha, self.lexico.coluna
+            if not self.vetor:
+                self.semantico.tipos_atrib.append(
+                    self.semantico.get_type_token(
+                        lexema, self.lexico.linha, self.lexico.coluna
+                    )
                 )
-            )
 
             if self.semantico.is_function(lexema):
-                self.semantico.generate_code(ident, lexema, 0)
+                if self.is_increment:
+                    self.increment_for[self.posi_increment] += lexema
+                    self.increment_for[self.posi_increment] += " "
+                else:
+                    self.semantico.generate_code(ident, lexema, 0)
             else:
-                self.semantico.generate_code(ident, lexema, 1)
+                if self.is_increment:
+                    self.increment_for[self.posi_increment] += lexema
+                    self.increment_for[self.posi_increment] += " "
+                else:
+                    self.semantico.generate_code(ident, lexema, 1)
             self.identifier(ident)
         elif token == TOKEN.valorInt:
-            self.semantico.tipos_atrib.append(token)
+            if not self.vetor:
+                self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.valorInt)
-            self.semantico.generate_code(0, lexema, 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += lexema
+                self.increment_for[self.posi_increment] += " "
+            else:
+                self.semantico.generate_code(ident, lexema, 1)
         elif token == TOKEN.valorFloat:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.valorFloat)
-            self.semantico.generate_code(0, lexema, 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += lexema
+                self.increment_for[self.posi_increment] += " "
+            else:
+                self.semantico.generate_code(ident, lexema, 1)
         elif token == TOKEN.valorChar:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.valorChar)
-            self.semantico.generate_code(0, lexema, 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += lexema
+                self.increment_for[self.posi_increment] += " "
+            else:
+                self.semantico.generate_code(ident, lexema, 1)
         elif token == TOKEN.valorString:
             self.semantico.tipos_atrib.append(token)
             self.consume(TOKEN.valorString)
-            self.semantico.generate_code(0, lexema, 1)
+            if self.is_increment:
+                self.increment_for[self.posi_increment] += lexema
+                self.increment_for[self.posi_increment] += " "
+            else:
+                self.semantico.generate_code(ident, lexema, 1)
         else:
             self.error_message(token, lexema, linha, coluna)
 
@@ -679,9 +787,11 @@ class Sintatico:
         if token == TOKEN.abreCol:
             self.consume(TOKEN.abreCol)
             self.semantico.generate_code(0, lexema, 1)
+            self.vetor = True
             self.expr(0)
             self.consume(TOKEN.fechaCol)
-            self.semantico.generate_code(0, "]", 0)
+            self.semantico.generate_code(0, "]", 1)
+            self.vetor = False
         elif token == TOKEN.abrePar:
             self.consume(TOKEN.abrePar)
             self.semantico.generate_code(0, lexema, 1)
@@ -723,6 +833,7 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.virg:
             self.consume(TOKEN.virg)
+            self.semantico.tipos_atrib.append(TOKEN.virg)
             self.semantico.generate_code(ident, lexema, 1)
             self.expr(ident)
             self.resto_params(ident)
@@ -731,7 +842,7 @@ class Sintatico:
 
 
 if __name__ == "__main__":
-    path = "example2.c"
+    path = "bolha.c"
     arq_sem = "testeSemantico.py"
     lex = Lexical(path)
     sintatico = Sintatico(lex, arq_sem)

@@ -1,19 +1,8 @@
-int soma(int a, int b) {
-    return a + b;
-}
-
 int troca(int v[], int n) {
-    int i, j;
-    i = 0;
-    j = n - 1;
-    while (i < j) {
         int tmp;
+        int i;
         tmp = v[i];
-        v[i] = v[j];
-        v[j] = tmp;
-        i = i + 1;
-        j = j - 1;
-    }
+
     return 0;
 }
 

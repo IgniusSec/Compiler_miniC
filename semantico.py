@@ -89,7 +89,7 @@ class Semantico:
         self.new_function("putfloat", TOKEN.valorFloat, {"x": (TOKEN.valorFloat, 0)})
         self.new_function("getfloat", TOKEN.valorFloat, dict())
 
-        self.new_function("putstr", TOKEN.valorString, {"x": (TOKEN.valorInt, 0)})
+        self.new_function("putstr", TOKEN.valorString, {"x": (TOKEN.valorString, 0)})
         self.new_function("getstr", TOKEN.valorString, dict())
 
     def end_semantico(self):
@@ -117,14 +117,14 @@ class Semantico:
             result = self.tabelaOperacoes[table]
             if result != esperado:
                 raise ErroTipo(
-                    f"{TOKEN.msg(esperado)} {TOKEN.msg(vetor_tipos[1])} {TOKEN.msg(vetor_tipos[2])}",
+                    f"{TOKEN.msg(esperado)} {TOKEN.msg(vetor_tipos[0])} {TOKEN.msg(vetor_tipos[1])}",
                     linha,
                     coluna,
                 )
         else:
             if len(vetor_tipos) > 1:
                 raise ErroTipo(
-                    f"{TOKEN.msg(esperado)} {TOKEN.msg(vetor_tipos[1])} {TOKEN.msg(vetor_tipos[2])}",
+                    f"{TOKEN.msg(esperado)} {TOKEN.msg(vetor_tipos[0])} {TOKEN.msg(vetor_tipos[1])}",
                     linha,
                     coluna,
                 )
@@ -169,11 +169,16 @@ class Semantico:
 
                 # verifica quantia de parametros da função
                 totParamFunc = len(funcao_atual[1])
-                totParamsPassed = len(vetor_tipos)
-                if totParamFunc != totParamsPassed:
-                    raise ErroFunctionParams(
-                        totParamFunc, totParamsPassed, linha, coluna
-                    )
+
+                countParams = 1
+                for i in vetor_tipos:
+                    if i == TOKEN.virg:
+                        countParams += 1
+
+                if countParams == 0 and len(vetor_tipos) <= 0:
+                    countParams = 0
+                if totParamFunc != countParams:
+                    raise ErroFunctionParams(totParamFunc, countParams, linha, coluna)
 
                 tipo_retorno = type_var(tipo_retorno)
                 tipo_func = funcao_atual[0]
@@ -195,14 +200,15 @@ class Semantico:
                 ):
                     tipo_input = type_var(tipo_input)
                     resto_param = type_var(resto_param[0])
-                    if tipo_input != resto_param and resto_param != TOKEN.valorChar:
-                        raise ErroSemantico(
-                            resto_param,
-                            tipo_input,
-                            f"Erro em um dos parâmetros da função: {function}",
-                            linha,
-                            coluna,
-                        )
+                    if tipo_input != TOKEN.virg:
+                        if tipo_input != resto_param and resto_param != TOKEN.valorChar:
+                            raise ErroSemantico(
+                                resto_param,
+                                tipo_input,
+                                f"Erro em um dos parâmetros da função: {function}",
+                                linha,
+                                coluna,
+                            )
         else:
             if function:
                 funcao_atual = self.defined_functions[function]
@@ -210,11 +216,14 @@ class Semantico:
 
                 # verifica quantia de parametros da função
                 totParamFunc = len(funcao_atual[1])
-                totParamsPassed = len(vetor_tipos)
-                if totParamFunc != totParamsPassed:
-                    raise ErroFunctionParams(
-                        totParamFunc, totParamsPassed, linha, coluna
-                    )
+                countParams = 1
+                for i in vetor_tipos:
+                    if i == TOKEN.virg:
+                        countParams += 1
+                if countParams == 0 and len(vetor_tipos) <= 0:
+                    countParams = 0
+                if totParamFunc != countParams:
+                    raise ErroFunctionParams(totParamFunc, countParams, linha, coluna)
 
                 tipo_retorno = type_var(tipo_retorno)
                 tipo_func = funcao_atual[0]
@@ -236,14 +245,15 @@ class Semantico:
                 ):
                     tipo_input = type_var(tipo_input)
                     resto_param = type_var(resto_param[0])
-                    if tipo_input != resto_param and resto_param != TOKEN.valorChar:
-                        raise ErroSemantico(
-                            resto_param,
-                            tipo_input,
-                            f"Erro em um dos parâmetros da função: {function}",
-                            linha,
-                            coluna,
-                        )
+                    if tipo_input != TOKEN.virg:
+                        if tipo_input != resto_param and resto_param != TOKEN.valorChar:
+                            raise ErroSemantico(
+                                resto_param,
+                                tipo_input,
+                                f"Erro em um dos parâmetros da função: {function}",
+                                linha,
+                                coluna,
+                            )
 
     """ define o scopo atual, colocando-o no final da pilha 
         retorno é o tipo de retorno e vars englobam tanto os parametros
