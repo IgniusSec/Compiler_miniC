@@ -24,29 +24,30 @@ def ordena(vetor: int, tam: int) -> int:
 
 
 def prompt(i: int) -> int:
-    putstr( "Digite o " )     
-    putint( i )     
-    putstr( "o inteiro: " )     
+    print( "Digite o " )     
+    print( i )     
+    print( "o inteiro: " )     
 
 
 def main() -> int:
     buffer[ 15 ]
     i
-    putstr( "ENTRADA \n" )     
+    print( "ENTRADA \n" )     
     # Simulando for de C usando while em python
     i = 0 
     while i < 15 :
 
         prompt( i + 1 )         
-        buffer [ i ] = getint( )         
+        buffer [ i ] = int(input( ) )        
         i = i + 1 
     ordena( buffer , 15 )     
-    putstr( "SAIDA \n" )     
+    print( "SAIDA \n" )     
     # Simulando for de C usando while em python
     i = 0 
     while i < 15 :
 
-        putint( buffer [ i ] )         
+        print( buffer [ i ] )         
         i = i + 1 
+    int(input( ) )    
 
 

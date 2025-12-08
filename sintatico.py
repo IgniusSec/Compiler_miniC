@@ -1,6 +1,6 @@
 from lexical import Lexical, PATH_FILE
 from ttoken import TOKEN
-from semantico import Semantico, ErroFunctionParams
+from semantico import FUNC_PREDEF, Semantico, ErroFunctionParams
 
 PERM_TYPES = [TOKEN.INT, TOKEN.FLOAT, TOKEN.CHAR]
 
@@ -69,9 +69,10 @@ class Sintatico:
                     self.semantico.tipos_atrib, None, linha, coluna
                 )
         elif self.semantico.is_function(lexema):
-            raise ErroFunctionParams(
-                len(self.semantico.defined_functions[lexema][1]), 0, linha, coluna
-            )
+            if len(self.semantico.defined_functions[lexema][1]) != 0:
+                raise ErroFunctionParams(
+                    len(self.semantico.defined_functions[lexema][1]), 0, linha, coluna
+                )
 
     """
         Program  ->  LAMBDA | Function Program
@@ -694,6 +695,27 @@ class Sintatico:
             self.folha(ident)
 
     """
+        Função para definir a saida das funções presetadas (put e get)
+    """
+
+    def funcoes_predefinidas(self, lexema, ident, space):
+        if (
+            lexema == "putint"
+            or lexema == "putchar"
+            or lexema == "putstr"
+            or lexema == "putfloat"
+        ):
+            self.semantico.generate_code(ident, "print", space)
+        elif lexema == "getstr":
+            self.semantico.generate_code(ident, "input", space)
+        elif lexema == "getint":
+            self.semantico.generate_code(ident, "int(input", space)
+        elif lexema == "getfloat":
+            self.semantico.generate_code(ident, "float(input", space)
+        elif lexema == "getchar":
+            self.semantico.generate_code(ident, "input", space)
+
+    """
         Folha -> ( Expr ) | Identifier
         | valorInt | valorFloat | valorChar | valorString
     """
@@ -726,7 +748,10 @@ class Sintatico:
                     self.increment_for[self.posi_increment] += lexema
                     self.increment_for[self.posi_increment] += " "
                 else:
-                    self.semantico.generate_code(ident, lexema, 0)
+                    if lexema in FUNC_PREDEF:
+                        self.funcoes_predefinidas(lexema, ident, 0)
+                    else:
+                        self.semantico.generate_code(ident, lexema, 0)
             else:
                 if self.is_increment:
                     self.increment_for[self.posi_increment] += lexema
@@ -734,6 +759,9 @@ class Sintatico:
                 else:
                     self.semantico.generate_code(ident, lexema, 1)
             self.identifier(ident)
+            if lexema in FUNC_PREDEF:
+                if "getfloat" == lexema or "getint" == lexema:
+                    self.semantico.generate_code(0, ")", 0)
         elif token == TOKEN.valorInt:
             if not self.vetor:
                 self.semantico.tipos_atrib.append(token)

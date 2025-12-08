@@ -2,6 +2,16 @@ from ttoken import TOKEN, OPREL as OPREL
 import copy
 
 vars_type = [TOKEN.INT, TOKEN.FLOAT, TOKEN.CHAR]
+FUNC_PREDEF = [
+    "putchar",
+    "getchar",
+    "putint",
+    "getint",
+    "putfloat",
+    "getfloat",
+    "putstr",
+    "getstr",
+]
 
 
 def type_var(var):
