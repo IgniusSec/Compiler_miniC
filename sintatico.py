@@ -23,9 +23,6 @@ class Sintatico:
         self.increment_for = []
         self.posi_increment = -1
 
-        self.semantico.generate_code(0, '\nif __name__ == "__main__":\n', 0)
-        self.semantico.generate_code(1, "main()\n\n\n", 0)
-
     def error_message(self, token, lexema, linha, coluna):
         msg = TOKEN.msg(token)
         print(f"Comando mal utilizado: {msg}: {lexema} || Lin{linha} Col{coluna}")
@@ -84,6 +81,10 @@ class Sintatico:
         if token in PERM_TYPES:
             self.function()
             self.program()
+
+        elif token == TOKEN.eof:
+            self.semantico.generate_code(0, '\nif __name__ == "__main__":\n', 0)
+            self.semantico.generate_code(1, "main()\n\n\n", 0)
 
         else:
             return
@@ -458,7 +459,7 @@ class Sintatico:
         (token, lexema, linha, coluna) = self.lexico.token_atual
         if token == TOKEN.abreCol:
             self.consume(TOKEN.abreCol)
-            self.semantico.generate_code(0, "[", 1)
+            self.semantico.generate_code(0, " = [0] *", 1)
 
             is_vetor = self.lexico.token_atual
 
@@ -466,7 +467,6 @@ class Sintatico:
             self.semantico.generate_code(0, lexema, 1)
             self.consume(TOKEN.valorInt)
             self.consume(TOKEN.fechaCol)
-            self.semantico.generate_code(0, "]", 0)
 
             self.semantico.define_scope(name, tipo, is_vetor)
         # retirando possibilidade de atribuição de valor na declaração da variável
@@ -474,6 +474,7 @@ class Sintatico:
         #     self.consume(TOKEN.atrib)
         #     self.expr()
         else:
+            self.semantico.generate_code(0, " = None", 0)
             self.semantico.define_scope(name, tipo, 0)
             return
 

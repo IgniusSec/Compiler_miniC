@@ -1,11 +1,6 @@
-
-if __name__ == "__main__":
-    main()
-
-
 def ordena(vetor: int, tam: int) -> int:
-    topo
-    bolha
+    topo = None
+    bolha = None
     # Simulando for de C usando while em python
     topo = tam - 1 
     while topo > 1 :
@@ -15,7 +10,7 @@ def ordena(vetor: int, tam: int) -> int:
         while bolha < topo :
 
             if vetor [ bolha ] > vetor [ bolha + 1 ] :
-                aux
+                aux = None
                 aux = vetor [ bolha + 1 ]                 
                 vetor [ bolha + 1 ] = vetor [ bolha ]                 
                 vetor [ bolha ] = aux                 
@@ -30,8 +25,8 @@ def prompt(i: int) -> int:
 
 
 def main() -> int:
-    buffer[ 15 ]
-    i
+    buffer = [0] * 15 
+    i = None
     print( "ENTRADA \n" )     
     # Simulando for de C usando while em python
     i = 0 
@@ -48,6 +43,10 @@ def main() -> int:
 
         print( buffer [ i ] )         
         i = i + 1 
-    int(input( ) )    
+
+
+
+if __name__ == "__main__":
+    main()
 
 
